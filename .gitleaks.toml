@@ -1,0 +1,16 @@
+title = "openai_dart gitleaks config"
+
+[allowlist]
+description = "Allow obvious placeholders used in docs/examples"
+regexes = [
+  '''replace_with_real_key''',
+  '''YOUR_DEEPSEEK_API_KEY''',
+  '''your_key_here''',
+  '''YOUR_API_KEY''',
+]
+paths = [
+  '''^\.env\.example$''',
+  '''^README\.md$''',
+  '''^examples/README\.md$''',
+  '''^docs/API_DOCS\.md$''',
+]

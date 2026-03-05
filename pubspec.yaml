@@ -1,0 +1,17 @@
+name: openai_dart
+description: OpenAI-compatible Dart client with DeepSeek-focused features.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.11.0 <4.0.0'
+
+dependencies:
+  http: ^1.2.2
+  json_annotation: ^4.11.0
+
+dev_dependencies:
+  lints: ^5.1.1
+  test: ^1.25.8
+  build_runner: ^2.4.13
+  json_serializable: ^6.9.0
