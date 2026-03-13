@@ -1,4 +1,7 @@
+import 'package:http/http.dart' as http;
+
 import 'core/api_http_client.dart';
+import 'core/http_log_event.dart';
 import 'resources/chat_completions_resource.dart';
 import 'resources/chat_resource.dart';
 import 'resources/models_resource.dart';
@@ -11,11 +14,15 @@ class OpenAI {
     String baseUrl = 'https://api.deepseek.com',
     Duration timeout = const Duration(seconds: 30),
     RetryConfig retryConfig = const RetryConfig(),
+    HttpLogCallback? onHttpLog,
+    http.Client? httpClient,
   }) : _httpClient = ApiHttpClient(
          apiKey: apiKey,
          baseUrl: baseUrl,
          timeout: timeout,
          retryConfig: retryConfig,
+         onHttpLog: onHttpLog,
+         httpClient: httpClient,
        ) {
     chat = ChatResource(completions: ChatCompletionsResource(_httpClient));
     models = ModelsResource(_httpClient);

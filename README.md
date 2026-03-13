@@ -74,6 +74,31 @@ final client = OpenAI(
 );
 ```
 
+### Debug logging
+
+Enable HTTP request/response logging by passing an `onHttpLog` callback. Logging is silent by default (`onHttpLog: null`).
+
+```dart
+final client = OpenAI(
+  apiKey: apiKey,
+  onHttpLog: (event) {
+    print('${event.method} ${event.uri} -> ${event.statusCode} (${event.duration?.inMilliseconds}ms)');
+  },
+);
+```
+
+`HttpLogEvent` provides `method`, `uri`, `statusCode`, `duration`, `requestHeaders` (sanitized; `Authorization` is redacted), `requestBody`, `responseHeaders`, and `responseBody`. Forward to your own logger:
+
+```dart
+final _log = Logger('my_app');
+final client = OpenAI(
+  apiKey: apiKey,
+  onHttpLog: (e) => _log.fine('HTTP ${e.method} ${e.uri} ${e.statusCode}'),
+);
+```
+
+Libraries that consume this package can pass the callback through to let end users control debug output.
+
 ### Beta features
 
 Use beta base URL for beta-only APIs:

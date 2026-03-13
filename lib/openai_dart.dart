@@ -1,3 +1,4 @@
+export 'src/core/http_log_event.dart';
 export 'src/openai.dart';
 export 'src/session/chat_session.dart';
 export 'src/types/chat_completion_chunk.dart';

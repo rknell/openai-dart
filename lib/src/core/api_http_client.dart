@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'errors.dart';
+import 'http_log_event.dart';
 
 class RetryConfig {
   const RetryConfig({
@@ -23,13 +24,16 @@ class ApiHttpClient {
     required this.baseUrl,
     required this.timeout,
     required this.retryConfig,
+    HttpLogCallback? onHttpLog,
     http.Client? httpClient,
-  }) : _httpClient = httpClient ?? http.Client();
+  })  : _onHttpLog = onHttpLog,
+        _httpClient = httpClient ?? http.Client();
 
   final String apiKey;
   final String baseUrl;
   final Duration timeout;
   final RetryConfig retryConfig;
+  final HttpLogCallback? _onHttpLog;
   final http.Client _httpClient;
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
@@ -42,9 +46,25 @@ class ApiHttpClient {
   Future<JsonResponse> getJson(String path) async {
     return _withRetry(() async {
       try {
+        final stopwatch = Stopwatch()..start();
+        final uri = _uri(path);
         final response = await _httpClient
-            .get(_uri(path), headers: _headers)
+            .get(uri, headers: _headers)
             .timeout(timeout);
+        stopwatch.stop();
+        final callback = _onHttpLog;
+        if (callback != null) {
+          callback(HttpLogEvent(
+            method: 'GET',
+            uri: uri,
+            statusCode: response.statusCode,
+            duration: stopwatch.elapsed,
+            requestHeaders: HttpLogEvent.sanitizeHeaders(_headers),
+            requestBody: null,
+            responseHeaders: response.headers,
+            responseBody: response.body.isNotEmpty ? response.body : null,
+          ));
+        }
         return _parseResponse(response);
       } on TimeoutException catch (e) {
         throw APIConnectionError('Request timeout: $e');
@@ -57,9 +77,26 @@ class ApiHttpClient {
   Future<JsonResponse> postJson(String path, Map<String, dynamic> body) async {
     return _withRetry(() async {
       try {
+        final stopwatch = Stopwatch()..start();
+        final uri = _uri(path);
+        final bodyStr = jsonEncode(body);
         final response = await _httpClient
-            .post(_uri(path), headers: _headers, body: jsonEncode(body))
+            .post(uri, headers: _headers, body: bodyStr)
             .timeout(timeout);
+        stopwatch.stop();
+        final callback = _onHttpLog;
+        if (callback != null) {
+          callback(HttpLogEvent(
+            method: 'POST',
+            uri: uri,
+            statusCode: response.statusCode,
+            duration: stopwatch.elapsed,
+            requestHeaders: HttpLogEvent.sanitizeHeaders(_headers),
+            requestBody: bodyStr,
+            responseHeaders: response.headers,
+            responseBody: response.body.isNotEmpty ? response.body : null,
+          ));
+        }
         return _parseResponse(response);
       } on TimeoutException catch (e) {
         throw APIConnectionError('Request timeout: $e');
@@ -73,9 +110,12 @@ class ApiHttpClient {
     String path,
     Map<String, dynamic> body,
   ) async* {
-    final request = http.Request('POST', _uri(path));
+    final stopwatch = Stopwatch()..start();
+    final uri = _uri(path);
+    final bodyStr = jsonEncode(body);
+    final request = http.Request('POST', uri);
     request.headers.addAll(_headers);
-    request.body = jsonEncode(body);
+    request.body = bodyStr;
 
     http.StreamedResponse response;
     try {
@@ -84,6 +124,21 @@ class ApiHttpClient {
       throw APIConnectionError('Request timeout: $e');
     } on http.ClientException catch (e) {
       throw APIConnectionError('Connection failed: $e');
+    }
+
+    stopwatch.stop();
+    final callback = _onHttpLog;
+    if (callback != null) {
+      callback(HttpLogEvent(
+        method: 'POST',
+        uri: uri,
+        statusCode: response.statusCode,
+        duration: stopwatch.elapsed,
+        requestHeaders: HttpLogEvent.sanitizeHeaders(_headers),
+        requestBody: bodyStr,
+        responseHeaders: response.headers,
+        responseBody: null, // SSE stream - body not captured
+      ));
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
